@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Threat Trace</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; color: #e0e0e0; font-family: 'Courier New', monospace; min-height: 100vh; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    h1 { color: #00ff88; font-size: 2.5rem; margin-bottom: 8px; }
+    .subtitle { color: #888; margin-bottom: 40px; }
+    .scenario-box { background: #111; border: 1px solid #222; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+    .scenario-box h2 { color: #00ff88; margin-bottom: 16px; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; }
+    .preloaded { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .preset-btn { background: #1a1a2e; border: 1px solid #333; color: #ccc; padding: 12px 16px; text-align: left; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+    .preset-btn:hover { border-color: #00ff88; color: #00ff88; }
+    textarea { width: 100%; background: #0d0d0d; border: 1px solid #333; color: #e0e0e0; padding: 12px; border-radius: 4px; font-family: inherit; font-size: 0.9rem; resize: vertical; min-height: 80px; }
+    .generate-btn { background: #00ff88; color: #000; border: none; padding: 14px 32px; font-family: inherit; font-size: 1rem; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 12px; transition: all 0.2s; }
+    .generate-btn:hover { background: #00cc6a; }
+    .generate-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+    #game { display: none; }
+    .case-header { background: #111; border: 1px solid #00ff88; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+    .case-header h2 { color: #00ff88; margin-bottom: 8px; }
+    .case-header p { color: #aaa; line-height: 1.6; }
+    .stage { background: #111; border: 1px solid #222; border-radius: 8px; padding: 24px; margin-bottom: 16px; }
+    .stage-label { color: #00ff88; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; }
+    .stage h3 { color: #fff; margin-bottom: 12px; }
+    .stage p { color: #aaa; margin-bottom: 16px; line-height: 1.6; }
+    .evidence { background: #0d1a0d; border: 1px solid #1a3a1a; border-radius: 4px; padding: 12px; margin-bottom: 16px; font-size: 0.85rem; color: #88cc88; }
+    .choices { display: flex; flex-direction: column; gap: 8px; }
+    .choice-btn { background: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 12px 16px; text-align: left; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+    .choice-btn:hover:not(:disabled) { border-color: #00ff88; color: #fff; }
+    .choice-btn.correct { border-color: #00ff88; background: #0d1a0d; color: #00ff88; }
+    .choice-btn.incorrect { border-color: #ff4444; background: #1a0d0d; color: #ff4444; }
+    .feedback { margin-top: 12px; padding: 12px; border-radius: 4px; font-size: 0.9rem; line-height: 1.5; display: none; }
+    .feedback.correct { background: #0d1a0d; border: 1px solid #00ff88; color: #00ff88; }
+    .feedback.incorrect { background: #1a0d0d; border: 1px solid #ff4444; color: #ff4444; }
+    .stats { display: flex; gap: 16px; margin-bottom: 24px; }
+    .stat { background: #111; border: 1px solid #222; border-radius: 4px; padding: 12px 20px; text-align: center; }
+    .stat-value { color: #00ff88; font-size: 1.5rem; font-weight: bold; }
+    .stat-label { color: #666; font-size: 0.75rem; text-transform: uppercase; }
+    .report-btn { background: #1a1a2e; border: 1px solid #00ff88; color: #00ff88; padding: 14px 32px; font-family: inherit; font-size: 1rem; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 16px; }
+    .report-btn:hover { background: #00ff88; color: #000; }
+    .loading { text-align: center; padding: 60px; color: #00ff88; }
+    .loading p { margin-top: 16px; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⚡ THREAT TRACE</h1>
+    <p class="subtitle">IoT Forensic Investigation Simulator — Caribbean Edition</p>
+
+    <div id="setup">
+      <div class="scenario-box">
+        <h2>Select a Case</h2>
+        <div class="preloaded">
+          <button class="preset-btn" onclick="selectPreset(this)">🏫 University router exfiltrating data to Eastern Europe</button>
+          <button class="preset-btn" onclick="selectPreset(this)">🏥 Hospital IoT medical device sending data to unknown server</button>
+          <button class="preset-btn" onclick="selectPreset(this)">🏦 Bank ATM network compromised via rogue IoT device</button>
+        </div>
+        <p style="color:#666; margin-bottom:8px; font-size:0.85rem;">— or enter your own —</p>
+        <textarea id="scenario-input" placeholder="Describe an IoT incident scenario..."></textarea>
+        <button class="generate-btn" onclick="generateCase()">INVESTIGATE →</button>
+      </div>
+    </div>
+
+    <div id="loading" style="display:none">
+      <div class="loading">
+        <h2 style="color:#00ff88">⟳ Analyzing Incident...</h2>
+        <p>Gemma 4 is processing the forensic scenario</p>
+      </div>
+    </div>
+
+    <div id="game">
+      <div class="stats">
+        <div class="stat"><div class="stat-value" id="score">0</div><div class="stat-label">Score</div></div>
+        <div class="stat"><div class="stat-value" id="stage-num">1/6</div><div class="stat-label">Stage</div></div>
+        <div class="stat"><div class="stat-value" id="integrity">100%</div><div class="stat-label">Integrity</div></div>
+      </div>
+      <div class="case-header">
+        <h2 id="case-title"></h2>
+        <p id="case-summary"></p>
+        <p style="margin-top:8px; color:#666; font-size:0.85rem;" id="attack-technique"></p>
+      </div>
+      <div id="stages-container"></div>
+      <button class="report-btn" id="report-btn" style="display:none" onclick="downloadReport()">↓ Download Forensic Report</button>
+    </div>
+  </div>
+
+  <script>
+    let caseData = null;
+    let score = 0;
+    let integrity = 100;
+    let currentStage = 0;
+
+    function selectPreset(btn) {
+      document.getElementById('scenario-input').value = btn.textContent.slice(2);
+    }
+
+    async function generateCase() {
+      const scenario = document.getElementById('scenario-input').value.trim();
+      if (!scenario) return alert('Please enter or select a scenario');
+
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('loading').style.display = 'block';
+
+      try {
+        const res = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scenario })
+        });
+        caseData = await res.json();
+        renderGame();
+      } catch (err) {
+        alert('Generation failed. Please try again.');
+        document.getElementById('setup').style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function renderGame() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('game').style.display = 'block';
+      document.getElementById('case-title').textContent = caseData.caseTitle;
+      document.getElementById('case-summary').textContent = caseData.incidentSummary;
+      document.getElementById('attack-technique').textContent = 'MITRE ATT&CK: ' + caseData.attackTechnique;
+
+      const container = document.getElementById('stages-container');
+      container.innerHTML = '';
+
+      caseData.stages.forEach((stage, i) => {
+        const div = document.createElement('div');
+        div.className = 'stage';
+        div.id = `stage-${i}`;
+        if (i > 0) div.style.opacity = '0.3';
+        div.innerHTML = `
+          <div class="stage-label">Stage ${i+1} of 6</div>
+          <h3>${stage.stageName}</h3>
+          <p>${stage.stageNarrative}</p>
+          <div class="evidence">🔍 Evidence: ${stage.evidenceFound}</div>
+          <div class="choices">
+            ${stage.choices.map(c => `<button class="choice-btn" onclick="makeChoice(this, ${i}, '${c.replace(/'/g, "\\'")}')">${c}</button>`).join('')}
+          </div>
+          <div class="feedback" id="feedback-${i}"></div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function makeChoice(btn, stageIndex, choice) {
+      const stage = caseData.stages[stageIndex];
+      const isCorrect = choice === stage.correctChoice;
+      const feedback = document.getElementById(`feedback-${stageIndex}`);
+      const buttons = btn.parentElement.querySelectorAll('.choice-btn');
+
+      buttons.forEach(b => b.disabled = true);
+      btn.classList.add(isCorrect ? 'correct' : 'incorrect');
+      feedback.style.display = 'block';
+      feedback.className = `feedback ${isCorrect ? 'correct' : 'incorrect'}`;
+      feedback.textContent = isCorrect ? stage.correctFeedback : stage.incorrectFeedback;
+
+      if (isCorrect) score += 10;
+      else integrity -= 15;
+
+      document.getElementById('score').textContent = score;
+      document.getElementById('integrity').textContent = Math.max(0, integrity) + '%';
+
+      currentStage = stageIndex + 1;
+      document.getElementById('stage-num').textContent = `${currentStage}/6`;
+
+      if (currentStage < caseData.stages.length) {
+        setTimeout(() => {
+          const next = document.getElementById(`stage-${currentStage}`);
+          next.style.opacity = '1';
+          next.scrollIntoView({ behavior: 'smooth' });
+        }, 1000);
+      } else {
+        document.getElementById('report-btn').style.display = 'block';
+      }
+    }
+
+    function downloadReport() {
+      let report = `# FORENSIC INVESTIGATION REPORT\n\n`;
+      report += `## ${caseData.caseTitle}\n\n`;
+      report += `**Incident Summary:** ${caseData.incidentSummary}\n\n`;
+      report += `**Attack Technique:** ${caseData.attackTechnique}\n\n`;
+      report += `**Device:** ${caseData.deviceType}\n\n`;
+      report += `---\n\n## INVESTIGATION STAGES\n\n`;
+      caseData.stages.forEach((s, i) => {
+        report += `### Stage ${i+1}: ${s.stageName}\n`;
+        report += `${s.stageNarrative}\n\n`;
+        report += `**Evidence:** ${s.evidenceFound}\n\n`;
+        report += `**Correct Action:** ${s.correctChoice}\n\n`;
+      });
+      report += `---\n\n## FINDINGS\n\n${caseData.reportNarrative}\n\n`;
+      report += `## CARIBBEAN CONTEXT\n\n${caseData.caribbeanContext}\n\n`;
+      report += `---\n*Score: ${score}/60 | Evidence Integrity: ${Math.max(0, integrity)}%*\n`;
+
+      const blob = new Blob([report], { type: 'text/markdown' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'threat-trace-report.md';
+      a.click();
+    }
+  </script>
+</body>
+</html>
